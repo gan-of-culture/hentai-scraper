@@ -3,6 +3,8 @@ from os.path import join, dirname, realpath
 from os import getcwd
 from bs4 import BeautifulSoup as soup
 from sys import exit
+import re
+from json import dump
 
 REQ_HEADER = {"User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.3"}
 
@@ -36,6 +38,54 @@ class Scraper:
         self.image_limit = image_limit
 
         self._scrape_images()
+
+    def update_tags(self):
+        tags = { "Rule34": {},
+                 "Danbooru": {} }
+        
+        #get tag categorys
+        tag_a_elements = self._get_soup("http://rule34.paheal.net/tags").find_all("span", {"class": "atoz"})[0].find_all("a")
+        tag_categories = [ tag.text for tag in tag_a_elements ]
+        for key in tags:
+            for category in tag_categories:
+                tags[key][category.upper()] = []
+        
+        print(tags)
+
+        #Rule 34
+        tag_urls = [ "http://rule34.paheal.net" + tag.get("href") for tag in tag_a_elements ]
+
+        for url in tag_urls:
+            #all tags have a style element - find thoose
+            tag_links = self._get_soup(url).find_all("section", {"id": "Tagsmain"})[0].find_all("div", {"class": "blockbody"})[0].find_all("a", {"style": re.compile(".*")})
+            for tag in tag_links:
+                tags["Rule34"][tag.text[0].upper()].append(tag.text)
+
+        #Donboru
+        basic_url = "https://danbooru.donmai.us/tags?commit=Search&page=<page>&search[category]=0&search[hide_empty]=yes&search[name_matches]=<tag_category>*&search[order]=name&utf8=%E2%9C%93"
+        for category in tag_categories:
+            page_index = 1
+            current_url = basic_url.replace("<tag_category>", category + "*")
+            while True:
+                current_url = current_url.replace("<page>", str(page_index))
+                site_content = self._get_soup(current_url)
+
+                tag_table_rows = site_content.find_all("table", {"class": "striped"})[0].tbody.find_all("tr")
+                if tag_table_rows == []:
+                    break
+                
+                for row in tag_table_rows:
+                    tag_text = row.find_all("td", {"class": "category-0"})[0].find_all("a")[1].text
+                    tags["Danbooru"][tag_text[0].upper()].append(tag_text)
+                
+                break
+
+                page_index += 1
+            #print(tags)
+            break
+
+        with open("tags.json", "w") as tag_file:
+            dump(tags, tag_file)
 
     def _get_soup(self, url: str):
 
@@ -108,5 +158,6 @@ class Scraper:
         except Exception as e:
             print(e)
 
-tags=["cat_tail", "nude"]
-Scraper().scrape_by_tags(tags=tags, image_limit=500)
+##tags=["cat_tail", "nude"]
+##Scraper().scrape_by_tags(tags=tags, image_limit=500)
+Scraper().update_tags()
