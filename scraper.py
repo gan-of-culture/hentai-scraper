@@ -49,8 +49,6 @@ class Scraper:
         for key in tags:
             for category in tag_categories:
                 tags[key][category.upper()] = []
-        
-        print(tags)
 
         #Rule 34
         tag_urls = [ "http://rule34.paheal.net" + tag.get("href") for tag in tag_a_elements ]
@@ -77,12 +75,8 @@ class Scraper:
                 for row in tag_table_rows:
                     tag_text = row.find_all("td", {"class": "category-0"})[0].find_all("a")[1].text
                     tags["Danbooru"][tag_text[0].upper()].append(tag_text)
-                
-                break
 
                 page_index += 1
-            #print(tags)
-            break
 
         with open("tags.json", "w") as tag_file:
             dump(tags, tag_file)
@@ -100,16 +94,20 @@ class Scraper:
 
         page = 1
         while len(list_of_image_data) < self.image_limit:
-            for url in self.urls:
+            print("Images found: " + str(len(list_of_image_data)))
+            for template_url in self.urls:
 
                 if len(self.urls) >= 1:
-                    url = url.replace("<page>", str(page))
-                    print(url)
+                    url = template_url.replace("<page>", str(page))
+                else:
+                    self.image_limit = 0 #get out of the while loop
+                    break
 
                 try:
                     site_content = self._get_soup(url)
                 except Exception as e:
                     print(e)
+                    self.urls.remove(template_url)
                     continue
 
                 if "rule34" in url:
@@ -158,6 +156,6 @@ class Scraper:
         except Exception as e:
             print(e)
 
-##tags=["cat_tail", "nude"]
-##Scraper().scrape_by_tags(tags=tags, image_limit=500)
-Scraper().update_tags()
+tags=["cat_ears", "nude"]
+Scraper().scrape_by_tags(tags=tags, image_limit=100)
+##Scraper().update_tags()
