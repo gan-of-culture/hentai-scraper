@@ -91,17 +91,17 @@ class Scraper:
 
     def _scrape_images(self):
         list_of_image_data = []
-
         page = 1
-        while len(list_of_image_data) < self.image_limit:
-            print("Images found: " + str(len(list_of_image_data)))
+        number_of_images = 0
+
+        print("[START] image scraping")
+
+        while True:
             for template_url in self.urls:
+                posts = None
 
                 if len(self.urls) >= 1:
                     url = template_url.replace("<page>", str(page))
-                else:
-                    self.image_limit = 0 #get out of the while loop
-                    break
 
                 try:
                     site_content = self._get_soup(url)
@@ -117,8 +117,9 @@ class Scraper:
                         image_dic = {"url": post.find_all("a")[1].get("href"),
                                     "title": post.get("data-post-id"),
                                     "extension": post.get("data-ext") }
-
+                        
                         list_of_image_data.append(image_dic)
+
 
                 elif "danbooru" in url:
 
@@ -129,13 +130,25 @@ class Scraper:
                                     "extension": post.get("data-file-ext") }
 
                         list_of_image_data.append(image_dic)
+                
+                if posts is None or len(posts) == 0:
+                    self.urls.remove(template_url)
+                elif number_of_images >= self.image_limit:
+                    self.urls = []
+                    break
+                else:
+                    number_of_images += len(posts)
+
+            
+            #no more scrapable content
+            if len(self.urls) == 0:
+                print("[FINISHED] {} images found".format(number_of_images))
+                break
 
             page += 1
 
-        images = str(len(list_of_image_data))
-        print("Images found: " + images)
         for index, image in enumerate(list_of_image_data):
-            print("[Downloading](" + str(index) + "/"+ images + ")" + image["url"])
+            print("[Downloading]({}/{}){}".format(index, number_of_images, image["url"]))
             self._download_image(image["url"], image["title"], image["extension"])
             #break
 
@@ -151,11 +164,12 @@ class Scraper:
                 img_file.write(uClient.read())
                 img_file.close()
 
-            print("[FINISHED] "+ img_title + "." + img_ext)
+            print("[FINISHED] {}".format(img_title + img_ext))
 
         except Exception as e:
             print(e)
 
+
 tags=["cat_ears", "nude"]
-Scraper().scrape_by_tags(tags=tags, image_limit=100)
+Scraper().scrape_by_tags(tags=tags, image_limit=5000)
 ##Scraper().update_tags()
