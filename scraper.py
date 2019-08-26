@@ -191,9 +191,9 @@ class Scraper:
 
             with urlopen(req) as uClient:
                 print("")
-                #img_file = open(filename, "wb")
-                #img_file.write(uClient.read())
-                #img_file.close()
+                img_file = open(filename, "wb")
+                img_file.write(uClient.read())
+                img_file.close()
 
         except Exception as e:
             print(e)
