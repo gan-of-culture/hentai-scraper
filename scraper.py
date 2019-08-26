@@ -2,11 +2,34 @@ from urllib.request import urlopen, Request, urlretrieve
 from os.path import join, dirname, realpath
 from os import getcwd
 from bs4 import BeautifulSoup as soup
-from sys import exit
+import sys
+import os
 import re
 from json import dump
 
 REQ_HEADER = {"User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.3"}
+
+class ProgressBar:
+    def __init__(self, max_amount: int):
+        self.amount = max_amount
+        self.size = 100
+        self.counter = 0
+        self.status = 0
+
+    def update_status(self, text: str):
+        self.counter += 1
+        self.status = self.counter / ( self.amount / self.size )
+
+        sys.stdout.write("\n[")
+        for i in range(0, self.size):
+            if i < round(self.status):
+                sys.stdout.write("=")
+            elif i == round(self.status):
+                sys.stdout.write("=>")
+            else:
+                sys.stdout.write(" ")
+        sys.stdout.write("]\n")
+        sys.stdout.write(text)
 
 class Scraper:
     def __init__(self,  path: str=join(dirname(realpath(__file__)), "images")):
@@ -134,10 +157,13 @@ class Scraper:
                 if posts is None or len(posts) == 0:
                     self.urls.remove(template_url)
                 elif number_of_images >= self.image_limit:
+                    number_of_images += len(posts)
                     self.urls = []
                     break
                 else:
                     number_of_images += len(posts)
+
+                print("Images: {}".format(number_of_images))
 
             
             #no more scrapable content
@@ -147,8 +173,12 @@ class Scraper:
 
             page += 1
 
+        progress_bar = ProgressBar(number_of_images)
+
         for index, image in enumerate(list_of_image_data):
-            print("[Downloading]({}/{}){}".format(index, number_of_images, image["url"]))
+            progress_bar.update_status("[Downloading]({}/{}) {}".format(index, number_of_images - 1, image["url"]))
+            if image["extension"] == ".zip" or image["extension"] == ".swf":
+                print("[ERROR] {} is not a vaild format".format(image["extension"]))
             self._download_image(image["url"], image["title"], image["extension"])
             #break
 
@@ -160,16 +190,15 @@ class Scraper:
         try:
 
             with urlopen(req) as uClient:
-                img_file = open(filename, "wb")
-                img_file.write(uClient.read())
-                img_file.close()
-
-            print("[FINISHED] {}".format(img_title + img_ext))
+                print("")
+                #img_file = open(filename, "wb")
+                #img_file.write(uClient.read())
+                #img_file.close()
 
         except Exception as e:
             print(e)
 
 
 tags=["cat_ears", "nude"]
-Scraper().scrape_by_tags(tags=tags, image_limit=5000)
+Scraper().scrape_by_tags(tags=tags, image_limit=10)
 ##Scraper().update_tags()
